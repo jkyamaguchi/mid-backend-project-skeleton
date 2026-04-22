@@ -184,3 +184,63 @@ Once you see the text "Your service is live" you can test your API with Postman 
 
 If you've got this far, you probably want to deploy your web app next. Head over to the README.md in your app directory for instructions.
 
+---
+
+## Project overview
+
+### What is this project?
+
+A backend API for an events ticketing platform — think "buy tickets to cooking classes, yoga sessions, concerts, etc."
+
+### What does it do?
+
+| Feature | What it means |
+|---|---|
+| **Events catalog** | Browse available events with pagination and sorting |
+| **Cart** | Add events to a cart (works even if you're not logged in) |
+| **Orders** | Authenticated users can place orders from their cart |
+| **Users** | Basic user accounts |
+
+### How it works in simple terms
+
+1. Start the server → `npm run dev`
+2. The server connects to PostgreSQL on Render
+3. Visit `http://localhost:3001/api/events` → it runs a SQL query → returns JSON
+4. Swagger UI at `http://localhost:3001/docs` lets you test everything visually
+
+### Tech stack
+
+| Tool | Role |
+|---|---|
+| **Node.js + Express** | Runs the server |
+| **Knex.js** | Builds SQL queries in JavaScript |
+| **PostgreSQL (Render)** | Cloud database |
+| **Swagger UI** | Interactive API docs at `/docs` |
+
+### Key API endpoints
+
+| Method | URL | What it does |
+|---|---|---|
+| `GET` | `/api/events` | List events (paginated, page 0 by default) |
+| `GET` | `/api/events?page=1` | Second page of events |
+| `GET` | `/api/events/:id` | Get a single event by ID |
+
+### Database tables
+
+| Table | Purpose |
+|---|---|
+| `user` | User accounts |
+| `event` | Events in the catalog |
+| `cart` | A cart per user (or guest session) |
+| `cart_item` | Individual events added to a cart |
+| `order` | A completed purchase (authenticated users only) |
+| `order_item` | Snapshot of each event at the time of purchase |
+
+### Key design decisions
+
+- `cart.user_id` is **nullable** — carts can exist before a user logs in (guest cart)
+- `cart.session_id` tracks guest carts; cleared when the cart is claimed by a logged-in user
+- `cart.is_active` enforces one active cart per authenticated user
+- `order_item.price_at_purchase` is a **price snapshot** — future price changes on events never alter order history
+- All orders run inside a **database transaction** — either the full order is created or nothing is
+
