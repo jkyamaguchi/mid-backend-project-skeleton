@@ -2,7 +2,7 @@
 
 This package sets up a [Express](https://expressjs.com/) API server and a connection to a database (SQLite by default) using [Knex](https://knexjs.org/).
 
-For development you can run the command `npm run dev` which uses `nodemon` to watch files and restarts the server when a change happens. You can find the API at [http://localhost:3001/api](http://localhost:3001/api). 
+For development you can run the command `npm run dev` which uses `nodemon` to watch files and restarts the server when a change happens. You can find the API at [http://localhost:3001/api](http://localhost:3001/api).
 
 There is an example route set up at "/" which you can implement to quickly test the connection to the database.
 
@@ -17,19 +17,20 @@ When you start a fresh project, check out `.env-template` to get started. Create
 ## Database clients
 
 The package comes installed with an SQLite, MySQL, and PostgreSQL client. Here's a quick suggestion for use cases:
+
 1. SQLite for quick, simple file-based storage
 2. MySQL for more advanced data storage (requires you to run a database service)
 3. PostgreSQL, similar to MySQL and used on our recommended hosting platform Render.com
 
-You can decide which client to use by changing the `DB_CLIENT` environment variable. See `.env-template` for more info. 
+You can decide which client to use by changing the `DB_CLIENT` environment variable. See `.env-template` for more info.
 
 ## Advanced database management
 
-You can get far with a simple `.sql` file to manage your database but if you'd prefer to manage your database with Knex, you can use [Knex Migrations](https://knexjs.org/guide/migrations.html) to set up your schema (as well as rollback schema changes across versions).  
+You can get far with a simple `.sql` file to manage your database but if you'd prefer to manage your database with Knex, you can use [Knex Migrations](https://knexjs.org/guide/migrations.html) to set up your schema (as well as rollback schema changes across versions).
 
-You can also use [Knex Seeds](https://knexjs.org/guide/migrations.html#seed-files) to populate your database with data.  
+You can also use [Knex Seeds](https://knexjs.org/guide/migrations.html#seed-files) to populate your database with data.
 
-Combined, these two techniques make it very easy to experiment with changes to your database or recover your database if something happens to it.  
+Combined, these two techniques make it very easy to experiment with changes to your database or recover your database if something happens to it.
 
 It also makes it possible to share temporary schema changes with others during Pull Request testing.
 
@@ -194,12 +195,12 @@ A backend API for an events ticketing platform — think "buy tickets to cooking
 
 ### What does it do?
 
-| Feature | What it means |
-|---|---|
-| **Events catalog** | Browse available events with pagination and sorting |
-| **Cart** | Add events to a cart (works even if you're not logged in) |
-| **Orders** | Authenticated users can place orders from their cart |
-| **Users** | Basic user accounts |
+| Feature            | What it means                                             |
+| ------------------ | --------------------------------------------------------- |
+| **Events catalog** | Browse available events with pagination and sorting       |
+| **Cart**           | Add events to a cart (works even if you're not logged in) |
+| **Orders**         | Authenticated users can place orders from their cart      |
+| **Users**          | Basic user accounts                                       |
 
 ### How it works in simple terms
 
@@ -210,31 +211,31 @@ A backend API for an events ticketing platform — think "buy tickets to cooking
 
 ### Tech stack
 
-| Tool | Role |
-|---|---|
-| **Node.js + Express** | Runs the server |
-| **Knex.js** | Builds SQL queries in JavaScript |
-| **PostgreSQL (Render)** | Cloud database |
-| **Swagger UI** | Interactive API docs at `/docs` |
+| Tool                    | Role                             |
+| ----------------------- | -------------------------------- |
+| **Node.js + Express**   | Runs the server                  |
+| **Knex.js**             | Builds SQL queries in JavaScript |
+| **PostgreSQL (Render)** | Cloud database                   |
+| **Swagger UI**          | Interactive API docs at `/docs`  |
 
 ### Key API endpoints
 
-| Method | URL | What it does |
-|---|---|---|
-| `GET` | `/api/events` | List events (paginated, page 0 by default) |
-| `GET` | `/api/events?page=1` | Second page of events |
-| `GET` | `/api/events/:id` | Get a single event by ID |
+| Method | URL                  | What it does                               |
+| ------ | -------------------- | ------------------------------------------ |
+| `GET`  | `/api/events`        | List events (paginated, page 0 by default) |
+| `GET`  | `/api/events?page=1` | Second page of events                      |
+| `GET`  | `/api/events/:id`    | Get a single event by ID                   |
 
 ### Database tables
 
-| Table | Purpose |
-|---|---|
-| `user` | User accounts |
-| `event` | Events in the catalog |
-| `cart` | A cart per user (or guest session) |
-| `cart_item` | Individual events added to a cart |
-| `order` | A completed purchase (authenticated users only) |
-| `order_item` | Snapshot of each event at the time of purchase |
+| Table        | Purpose                                         |
+| ------------ | ----------------------------------------------- |
+| `user`       | User accounts                                   |
+| `event`      | Events in the catalog                           |
+| `cart`       | A cart per user (or guest session)              |
+| `cart_item`  | Individual events added to a cart               |
+| `order`      | A completed purchase (authenticated users only) |
+| `order_item` | Snapshot of each event at the time of purchase  |
 
 ### Key design decisions
 
@@ -244,3 +245,90 @@ A backend API for an events ticketing platform — think "buy tickets to cooking
 - `order_item.price_at_purchase` is a **price snapshot** — future price changes on events never alter order history
 - All orders run inside a **database transaction** — either the full order is created or nothing is
 
+---
+
+## Database schema history
+
+This section explains how the database grew step by step during the project — written for beginners.
+
+---
+
+### Step 1 — Start simple: users and events
+
+We started with just two tables:
+
+- **`user`** — holds the name and email of each person using the app
+- **`event`** — holds each event in the catalog (title, price, description, etc.)
+
+Each event has a column called `created_by_user_id` that points to the user who created it. This is called a **foreign key** — it's like a reference that links one table to another. If you try to delete a user who created events, the database will block it to avoid leaving broken data behind.
+
+---
+
+### Step 2 — Plan the new tables: cart, cart_item, order, order_item
+
+Before writing any code, we drew a diagram (called an ERD — Entity Relationship Diagram) to plan out the new tables and answer some important questions:
+
+**Can someone add items to a cart without being logged in?**
+Yes. A cart can exist without a user account — we store a `session_id` instead to keep track of who the guest is. The `user_id` column is left empty (nullable) until the person logs in.
+
+**Can a user have multiple active carts?**
+No. We enforce one active cart per logged-in user using a database rule (a partial unique index on `user_id` where the cart is active).
+
+**How do we identify items in a cart?**
+Each cart item gets its own simple ID number — this makes it easier to work with in API endpoints.
+
+**Who can place an order?**
+Only logged-in users. The `user_id` on an order is always required (not nullable).
+
+---
+
+### Step 3 — Write the migration files
+
+A **migration file** is a JavaScript file that tells the database what tables to create. Running `npm run db:migrate` executes these files in order.
+
+We added two new migration files:
+
+**`20260422120000_create_cart_tables.js`** — creates `cart` and `cart_item`
+
+- `cart.user_id` can be empty (for guest carts)
+- `cart.session_id` can be empty (for logged-in users)
+- `cart.is_active` tracks whether this is the current active cart
+- If a cart is deleted, all its items are automatically deleted too (CASCADE)
+- The same event cannot appear twice in the same cart
+
+**`20260422130000_create_order_tables.js`** — creates `order` and `order_item`
+
+- `order.user_id` is always required — guests cannot place orders
+- If an order is deleted, all its items are automatically deleted too (CASCADE)
+
+Both files check if the table already exists before trying to create it, so they won't crash if you run them more than once.
+
+---
+
+### Step 4 — Fix a PostgreSQL ID numbering issue
+
+When we seed (fill) the database with test data, we insert rows with specific ID numbers like `id: 1`, `id: 2`, etc.
+
+PostgreSQL uses an internal counter called a **sequence** to automatically assign the next ID. The problem is: manually inserting IDs does not update that counter. So the next time something is inserted without an ID, PostgreSQL might try to use `id: 1` again — which crashes because it already exists.
+
+The fix: after each seed, we tell PostgreSQL to fast-forward its counter to the highest ID already in the table:
+
+```sql
+SELECT setval('table_id_seq', (SELECT MAX(id) FROM "table"))
+```
+
+---
+
+### Step 5 — Delete data in the right order
+
+When re-seeding (wiping and refilling test data), we need to delete rows carefully. Because tables reference each other with foreign keys, you can't delete a parent row while child rows still point to it.
+
+Think of it like this: you can't delete a shopping cart while it still has items in it.
+
+The correct order to delete everything is:
+
+```
+order_item → order → cart_item → cart → event → user
+```
+
+We always delete the most "dependent" tables first, working our way back to the root tables.
