@@ -249,7 +249,7 @@ A backend API for an events ticketing platform — think "buy tickets to cooking
 
 ## Database schema history
 
-This section explains how the database grew step by step during the project — written for beginners.
+This section explains how the database grew step by step during the project.
 
 ---
 
