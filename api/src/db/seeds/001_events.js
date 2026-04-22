@@ -2,7 +2,13 @@
  * @param {import("knex").Knex} knex
  */
 export async function seed(knex) {
+  // Delete in dependency order so RESTRICT FK constraints don't block event deletion
+  await knex("order_item").del();
+  await knex("order").del();
+  await knex("cart_item").del();
+  await knex("cart").del();
   await knex("event").del();
+  await knex.raw("ALTER SEQUENCE event_id_seq RESTART WITH 1");
 
   await knex("event")
     .insert([
