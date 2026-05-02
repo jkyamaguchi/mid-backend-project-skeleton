@@ -1,10 +1,10 @@
 import express from "express";
 import {
-    getEvents,
-    getEventById,
-    postEvent,
-    patchEvent,
-    removeEvent,
+  getEvents,
+  getEventById,
+  postEvent,
+  patchEvent,
+  removeEvent,
 } from "#controllers/events.js";
 
 const eventsRouter = express.Router();
@@ -33,6 +33,12 @@ const eventsRouter = express.Router();
  *       - Events
  *     parameters:
  *       - in: query
+ *         name: q
+ *         schema:
+ *           type: string
+ *         required: false
+ *         description: Search term matched against title and description (case-insensitive)
+ *       - in: query
  *         name: page
  *         schema:
  *           type: integer
@@ -40,59 +46,28 @@ const eventsRouter = express.Router();
  *           default: 0
  *         required: false
  *         description: Page number (zero-based)
+ *       - in: query
+ *         name: pageSize
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 100
+ *           default: 20
+ *         required: false
+ *         description: Number of items per page (max 100)
  *     responses:
  *       200:
  *         description: Paginated list of events
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 data:
- *                   type: array
- *                   items:
- *                     type: object
- *                     properties:
- *                       id:
- *                         type: integer
- *                         example: 1
- *                       price:
- *                         type: number
- *                         example: 150
- *                       currency:
- *                         type: string
- *                         example: DKK
- *                       title:
- *                         type: string
- *                         example: Live Jazz Trio
- *                       description:
- *                         type: string
- *                         example: An intimate jazz evening.
- *                       created_at:
- *                         type: string
- *                         format: date-time
- *                       updated_at:
- *                         type: string
- *                         format: date-time
- *                 meta:
- *                   type: object
- *                   properties:
- *                     page:
- *                       type: integer
- *                       example: 0
- *                     pageSize:
- *                       type: integer
- *                       example: 5
- *                     totalItems:
- *                       type: integer
- *                       example: 245
- *                     totalPages:
- *                       type: integer
- *                       example: 49
- *       400:
- *         description: Invalid query parameters
+ *               $ref: '#/components/schemas/PaginatedEvents'
  *       500:
- *         description: Server error
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
  */
 eventsRouter.get("/", getEvents);
 
@@ -119,8 +94,31 @@ eventsRouter.get("/", getEvents);
  *     responses:
  *       200:
  *         description: Event found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 data:
+ *                   $ref: '#/components/schemas/Event'
+ *       400:
+ *         description: Invalid event ID
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
  *       404:
  *         description: Event not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
  */
 eventsRouter.get("/:id", getEventById);
 
