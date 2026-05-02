@@ -195,36 +195,82 @@ A backend API for an events ticketing platform — think "buy tickets to cooking
 
 ### What does it do?
 
-| Feature            | What it means                                             |
-| ------------------ | --------------------------------------------------------- |
-| **Events catalog** | Browse available events with pagination and sorting       |
-| **Cart**           | Add events to a cart (works even if you're not logged in) |
-| **Orders**         | Authenticated users can place orders from their cart      |
-| **Users**          | Basic user accounts                                       |
-
-### How it works in simple terms
-
-1. Start the server → `npm run dev`
-2. The server connects to PostgreSQL on Render
-3. Visit `http://localhost:3001/api/events` → it runs a SQL query → returns JSON
-4. Swagger UI at `http://localhost:3001/docs` lets you test everything visually
+| Feature            | What it means                                                |
+| ------------------ | ------------------------------------------------------------ |
+| **Events catalog** | Browse available events with pagination, search, and sorting |
+| **Cart**           | Add events to a cart (works even if you're not logged in)    |
+| **Orders**         | Authenticated users can place orders from their cart         |
+| **Users**          | Basic user accounts                                          |
 
 ### Tech stack
 
-| Tool                    | Role                             |
-| ----------------------- | -------------------------------- |
-| **Node.js + Express**   | Runs the server                  |
-| **Knex.js**             | Builds SQL queries in JavaScript |
-| **PostgreSQL (Render)** | Cloud database                   |
-| **Swagger UI**          | Interactive API docs at `/docs`  |
+| Tool                   | Role                             |
+| ---------------------- | -------------------------------- |
+| **Node.js + Express**  | Runs the server                  |
+| **Knex.js**            | Builds SQL queries in JavaScript |
+| **PostgreSQL (local)** | Local development database       |
+| **Swagger UI**         | Interactive API docs at `/docs`  |
+
+### Running locally with PostgreSQL
+
+This project connects to a **local PostgreSQL instance** (not Render) during development. Make sure PostgreSQL is installed and running on your machine, then configure your `.env`:
+
+```
+PORT=3001
+
+DB_CLIENT=pg
+DB_HOST=localhost
+DB_PORT=5432
+DB_USER=your_pg_user
+DB_PASSWORD=your_pg_password
+DB_DATABASE_NAME=your_db_name
+DB_USE_SSL=false
+```
+
+Then set up the database and start the server:
+
+```bash
+npm run db:setup   # run migrations + seeds
+npm run dev        # start with auto-reload
+```
+
+### Stopping the server
+
+If you get an `EADDRINUSE: address already in use :::3001` error, a previous server process is still holding the port. Kill it with:
+
+```powershell
+Get-Process -Id (Get-NetTCPConnection -LocalPort 3001 -ErrorAction SilentlyContinue).OwningProcess -ErrorAction SilentlyContinue | Stop-Process -Force
+```
+
+Then run `npm run start` (or `npm run dev`) again.
+
+### Testing the API
+
+**Swagger UI** — open your browser and go to:
+
+```
+http://localhost:3001/docs
+```
+
+Every endpoint is listed there. You can fill in parameters and click "Execute" to send a live request directly from the browser.
+
+**Postman** — create a new request and point it at:
+
+```
+GET http://localhost:3001/api/events
+GET http://localhost:3001/api/events?q=music&page=0&pageSize=20
+GET http://localhost:3001/api/events/:id
+```
+
+No authentication headers are needed for the public catalog endpoints.
 
 ### Key API endpoints
 
-| Method | URL                  | What it does                               |
-| ------ | -------------------- | ------------------------------------------ |
-| `GET`  | `/api/events`        | List events (paginated, page 0 by default) |
-| `GET`  | `/api/events?page=1` | Second page of events                      |
-| `GET`  | `/api/events/:id`    | Get a single event by ID                   |
+| Method | URL                                      | What it does                               |
+| ------ | ---------------------------------------- | ------------------------------------------ |
+| `GET`  | `/api/events`                            | List events (paginated, page 0 by default) |
+| `GET`  | `/api/events?q=music&page=1&pageSize=20` | Search + paginate events                   |
+| `GET`  | `/api/events/:id`                        | Get a single event by ID                   |
 
 ### Database tables
 
