@@ -225,7 +225,11 @@ DB_USER=your_pg_user
 DB_PASSWORD=your_pg_password
 DB_DATABASE_NAME=your_db_name
 DB_USE_SSL=false
+
+JWT_SECRET=your_secret_key_here
 ```
+
+> `JWT_SECRET` is used to sign and verify authentication tokens. In development a fallback value is used automatically, but you should set a strong secret before deploying.
 
 Then set up the database and start the server:
 
@@ -266,11 +270,163 @@ No authentication headers are needed for the public catalog endpoints.
 
 ### Key API endpoints
 
-| Method | URL                                      | What it does                               |
-| ------ | ---------------------------------------- | ------------------------------------------ |
-| `GET`  | `/api/events`                            | List events (paginated, page 0 by default) |
-| `GET`  | `/api/events?q=music&page=1&pageSize=20` | Search + paginate events                   |
-| `GET`  | `/api/events/:id`                        | Get a single event by ID                   |
+| Method | URL                                      | Auth required | What it does                               |
+| ------ | ---------------------------------------- | ------------- | ------------------------------------------ |
+| `GET`  | `/api/events`                            | No            | List events (paginated, page 0 by default) |
+| `GET`  | `/api/events?q=music&page=1&pageSize=20` | No            | Search + paginate events                   |
+| `GET`  | `/api/events/:id`                        | No            | Get a single event by ID                   |
+| `POST` | `/api/auth/signup`                       | No            | Create a new user account                  |
+| `POST` | `/api/auth/login`                        | No            | Log in and receive a JWT token             |
+| `GET`  | `/api/auth/me`                           | Yes (Bearer)  | Get the currently authenticated user       |
+
+### API documentation style: `@swagger` comments vs `openapi.yaml`
+
+Both approaches are valid. The better choice depends on team size and workflow.
+
+**`@swagger` annotations (inline in route files)**
+
+- Best for small teams and trainee projects
+- Keeps docs close to the route code, so updates are quick
+- Reduces risk of forgetting to document a changed endpoint
+- Works very well with this project setup because Swagger scans `src/routers`
+
+**`openapi.yaml` (single contract file)**
+
+- Best when API governance and contract review are priorities
+- Easier to review API changes in one place
+- Better for SDK/client generation and contract-first workflows
+- Useful when multiple services or teams share one API contract
+
+**Recommended approach for this project**
+
+Use `@swagger` annotations as the default, because this codebase is organized around Express routers and fast iteration.
+
+If the project grows (multiple teams, strict API versioning, generated clients), consider moving to a single `openapi.yaml` as the source of truth.
+
+### Request validation with Zod
+
+This API validates request payloads with **Zod** before running business logic.
+
+Why this helps:
+
+- Keeps validation rules in one clear schema
+- Produces consistent and readable error messages
+- Prevents invalid data from reaching model/database logic
+
+Current usage in this project:
+
+- `POST /api/cart/items` validates `eventId` and `quantity`
+- `PUT /api/cart/items/{itemId}` validates both path params and body (`quantity`)
+- `POST /api/auth/signup` validates `name`, `email`, and `password`
+- `POST /api/auth/login` validates `email` and `password`
+
+Validation failures return:
+
+- HTTP status `400`
+- Error shape: `{ "error": { "status": 400, "message": "..." } }`
+
+Example pattern:
+
+```js
+import z from "zod";
+
+const cartItemCreateSchema = z.object({
+  eventId: z.coerce
+    .number()
+    .int("eventId must be an integer")
+    .positive("eventId must be a positive integer"),
+  quantity: z.coerce
+    .number()
+    .int("quantity must be an integer")
+    .positive("quantity must be a positive integer")
+    .default(1),
+});
+
+const cartItemUpdateSchema = z.object({
+  quantity: z.coerce
+    .number()
+    .int("quantity must be an integer")
+    .positive("quantity must be a positive integer"),
+});
+```
+
+Tip: use `safeParse(...)` and return early with a 400 response when validation fails.
+
+### Authentication
+
+The API uses **JSON Web Tokens (JWT)** for authentication.
+
+**Sign up** — create a new account:
+
+```http
+POST /api/auth/signup
+Content-Type: application/json
+
+{ "name": "Your Name", "email": "you@example.com", "password": "yourpassword" }
+```
+
+You can create an account directly in Swagger UI by testing the `POST /api/auth/signup` endpoint.
+You can also copy the same JSON body into Postman and send the request there.
+
+**Log in** — returns a token:
+
+```http
+POST /api/auth/login
+Content-Type: application/json
+
+{ "email": "you@example.com", "password": "yourpassword" }
+```
+
+In **Postman**:
+
+1. Create a new request.
+2. Set the method to `POST`.
+3. Use the URL `http://localhost:3001/api/auth/login`.
+4. Open the **Body** tab, choose **raw**, then select **JSON**.
+5. Paste your email and password JSON.
+6. Click **Send**.
+7. Copy the `token` value from the response.
+
+**Access a protected endpoint** — include the token as a Bearer header:
+
+```http
+GET /api/auth/me
+Authorization: Bearer <token>
+```
+
+In **Postman**:
+
+1. Create a second request.
+2. Set the method to `GET`.
+3. Use the URL `http://localhost:3001/api/auth/me`.
+4. Open the **Authorization** tab.
+5. Set **Type** to **Bearer Token**.
+6. Paste the token copied from the login response.
+7. Click **Send**.
+
+If the `Authorization` header is missing, or if the token is not prefixed as `Bearer <token>`, the API will return `401 Unauthorized`.
+
+#### Seeded test credentials
+
+After running `npm run db:seed` the following accounts are available immediately:
+
+| Name         | Email                      | Password    |
+| ------------ | -------------------------- | ----------- |
+| Test User    | `test.user@example.com`    | `test12345` |
+| Alice Jensen | `alice.jensen@example.com` | `test12345` |
+
+#### How the seeded passwords were created
+
+Passwords are never stored as plain text. Before a password is saved to the database it is run through **bcrypt**, a one-way hashing algorithm that is intentionally slow to make brute-force attacks impractical.
+
+The hash stored in the seed file was generated once using:
+
+```js
+import bcrypt from "bcryptjs";
+const hash = await bcrypt.hash("test12345", 10); // cost factor 10
+```
+
+The resulting string (e.g. `$2a$10$...`) is what lives in `password_hash`. At login time, `bcrypt.compare(plainPassword, storedHash)` re-hashes the attempt and checks it against the stored value — the original password cannot be recovered from the hash.
 
 ### Database tables
 
@@ -378,3 +534,16 @@ order_item → order → cart_item → cart → event → user
 ```
 
 We always delete the most "dependent" tables first, working our way back to the root tables.
+
+---
+
+### Step 6 — Add password authentication
+
+To support login we needed a way to store passwords safely. We added a new migration file:
+
+**`20260506120000_add_password_hash_to_user.js`** — adds a `password_hash` column to the `user` table.
+
+- The column is **nullable** so that existing seeded users (created before auth existed) are not broken.
+- Passwords are **never stored as plain text**. Before saving, the plain password is hashed with `bcrypt` (cost factor 10). At login, `bcrypt.compare` is used to verify the attempt against the stored hash — the original password cannot be read back.
+- The column name is `password_hash` (not `password`) to make it obvious that the raw value is never stored.
+- A JWT (JSON Web Token) is issued on successful signup or login. The token is signed with `JWT_SECRET` and expires after 7 days. Clients include it as `Authorization: Bearer <token>` on protected requests.
