@@ -4,14 +4,14 @@ import db from "#configs/database.js";
  * Find an order by id, including its items joined with event titles.
  *
  * @param {number} orderId
- * @param {{ trx?: import("knex").Knex }} [options]
+ * @param {{ transaction?: import("knex").Knex }} [options]
  * @returns {Promise<{ order: Object, items: Array<Object> }|null>}
  */
-export async function findOrderById(orderId, { trx = db } = {}) {
-  const order = await trx("order").where({ id: orderId }).first();
+export async function findOrderById(orderId, { transaction = db } = {}) {
+  const order = await transaction("order").where({ id: orderId }).first();
   if (!order) return null;
 
-  const items = await trx("order_item as oi")
+  const items = await transaction("order_item as oi")
     .join("event as e", "e.id", "oi.event_id")
     .where("oi.order_id", orderId)
     .orderBy("oi.id", "asc")
@@ -48,10 +48,13 @@ export async function findOrderById(orderId, { trx = db } = {}) {
  *   UPDATE cart SET is_active = false WHERE id = :cartId;
  *
  * @param {{ userId: number, cartId: number }} params
- * @param {{ trx?: import("knex").Knex }} [options]  Pass an existing trx to compose with a larger transaction
+ * @param {{ transaction?: import("knex").Knex }} [options]  Pass an existing transaction to compose with a larger transaction
  * @returns {Promise<{ order: Object, items: Array<Object> }>}
  */
-export async function createOrderFromCart({ userId, cartId }, { trx } = {}) {
+export async function createOrderFromCart(
+  { userId, cartId },
+  { transaction } = {},
+) {
   const run = async (t) => {
     // 1. Load cart items (price snapshot happens here — we read current cart prices)
     const cartItems = await t("cart_item").where({ cart_id: cartId });
@@ -92,7 +95,7 @@ export async function createOrderFromCart({ userId, cartId }, { trx } = {}) {
   };
 
   // Use caller's transaction if provided, otherwise open a new one
-  if (trx) return run(trx);
+  if (transaction) return run(transaction);
   return db.transaction(run);
 }
 
@@ -100,11 +103,11 @@ export async function createOrderFromCart({ userId, cartId }, { trx } = {}) {
  * List all orders for a user, newest first.
  *
  * @param {number} userId
- * @param {{ trx?: import("knex").Knex }} [options]
+ * @param {{ transaction?: import("knex").Knex }} [options]
  * @returns {Promise<Array<Object>>}
  */
-export async function listOrdersByUser(userId, { trx = db } = {}) {
-  return trx("order")
+export async function listOrdersByUser(userId, { transaction = db } = {}) {
+  return transaction("order")
     .where({ user_id: userId })
     .orderBy("created_at", "desc")
     .select("*");
