@@ -270,14 +270,234 @@ No authentication headers are needed for the public catalog endpoints.
 
 ### Key API endpoints
 
-| Method | URL                                      | Auth required | What it does                               |
-| ------ | ---------------------------------------- | ------------- | ------------------------------------------ |
-| `GET`  | `/api/events`                            | No            | List events (paginated, page 0 by default) |
-| `GET`  | `/api/events?q=music&page=1&pageSize=20` | No            | Search + paginate events                   |
-| `GET`  | `/api/events/:id`                        | No            | Get a single event by ID                   |
-| `POST` | `/api/auth/signup`                       | No            | Create a new user account                  |
-| `POST` | `/api/auth/login`                        | No            | Log in and receive a JWT token             |
-| `GET`  | `/api/auth/me`                           | Yes (Bearer)  | Get the currently authenticated user       |
+| Method   | URL                                      | Auth required     | What it does                               |
+| -------- | ---------------------------------------- | ----------------- | ------------------------------------------ |
+| `GET`    | `/api/events`                            | No                | List events (paginated, page 0 by default) |
+| `GET`    | `/api/events?q=music&page=1&pageSize=20` | No                | Search + paginate events                   |
+| `GET`    | `/api/events/:id`                        | No                | Get a single event by ID                   |
+| `POST`   | `/api/auth/signup`                       | No                | Create a new user account                  |
+| `POST`   | `/api/auth/login`                        | No                | Log in and receive a JWT token             |
+| `GET`    | `/api/auth/me`                           | Yes (Bearer)      | Get the currently authenticated user       |
+| `GET`    | `/api/cart`                              | Optional identity | Get active cart (authenticated or guest)   |
+| `POST`   | `/api/cart/items`                        | Optional identity | Add an event to cart                       |
+| `PUT`    | `/api/cart/items/{itemId}`               | Optional identity | Update quantity of a cart line             |
+| `DELETE` | `/api/cart/items/{itemId}`               | Optional identity | Remove one cart line from active cart      |
+| `GET`    | `/api/orders`                            | Yes (Bearer)      | List all orders for authenticated user     |
+| `GET`    | `/api/orders/{orderId}`                  | Yes (Bearer)      | Get a single order with items              |
+| `POST`   | `/api/orders/checkout`                   | Yes (Bearer)      | Convert active cart to order               |
+
+### How DELETE /api/cart/items/{itemId} works
+
+This endpoint removes one cart line (`cart_item.id`) from the caller's active cart.
+
+Important behavior:
+
+- `itemId` is the cart line id, not the event id
+- The API resolves your active cart from identity:
+- Use `Authorization: Bearer <token>` for authenticated users
+- Or use `x-session-id: <session-id>` for guest carts
+- The line is only deleted if it belongs to your active cart
+- On success, the response returns the updated cart (`cart`, `items`, `summary`) and the deleted line snapshot in `data.line`
+
+#### Request examples
+
+Authenticated user:
+
+```http
+DELETE /api/cart/items/12
+Authorization: Bearer <jwt-token>
+```
+
+Guest user:
+
+```http
+DELETE /api/cart/items/12
+x-session-id: guest-session-abc123
+```
+
+#### Response behavior
+
+- `200 OK`: item removed and updated cart returned
+- `400 Bad Request`: missing identity or invalid `itemId`
+- `404 Not Found`: item does not exist in your active cart
+- `401 Unauthorized`: invalid or expired bearer token
+
+### Cart workflow in Postman (POST -> PUT -> DELETE)
+
+Use this mini flow to test cart line lifecycle end-to-end.
+
+Identity setup (use one consistently in all 3 requests):
+
+- Authenticated: `Authorization: Bearer <jwt-token>`
+- Guest: `x-session-id: guest-session-abc123`
+
+1. Add an item to cart (POST)
+
+```http
+POST http://localhost:3001/api/cart/items
+Content-Type: application/json
+Authorization: Bearer <jwt-token>
+
+{
+  "eventId": 3,
+  "quantity": 1
+}
+```
+
+Save `data.line.id` from the response. This is the `itemId` for the next steps.
+
+2. Update quantity (PUT)
+
+```http
+PUT http://localhost:3001/api/cart/items/<itemId>
+Content-Type: application/json
+Authorization: Bearer <jwt-token>
+
+{
+  "quantity": 3
+}
+```
+
+3. Remove the item (DELETE)
+
+```http
+DELETE http://localhost:3001/api/cart/items/<itemId>
+Authorization: Bearer <jwt-token>
+```
+
+Expected result:
+
+- POST returns `201` (or `200` if same event already exists in cart)
+- PUT returns `200` and updated line quantity
+- DELETE returns `200` and the cart no longer contains that line
+
+### Checkout workflow (POST /api/orders/checkout)
+
+Once a shopper has added items to their cart and is ready to purchase, they trigger checkout with a single POST request.
+
+**Checkout requires authentication** — only logged-in users can place orders.
+
+```http
+POST http://localhost:3001/api/orders/checkout
+Authorization: Bearer <jwt-token>
+```
+
+**What happens inside the checkout transaction:**
+
+1. **Find the active cart** — the API looks up the user's current active cart
+2. **Validate cart is not empty** — returns 400 if no items exist
+3. **Snapshot prices** — creates order header with total price calculated from cart item prices (prevents future price changes from affecting historical data)
+4. **Create order items** — copies each cart line to the new order, preserving quantity and the snapshotted price at purchase time
+5. **Deactivate old cart** — marks the cart as inactive so it cannot be modified
+6. **Create new active cart** — generates a fresh empty cart for future shopping
+7. **Return results** — responds with the created order, order items, and the new empty cart
+
+**All operations run inside a single database transaction** — either the full checkout succeeds or nothing is saved. This guarantees data consistency.
+
+**Response on success (201 Created):**
+
+```json
+{
+  "data": {
+    "order": {
+      "id": 1,
+      "user_id": 5,
+      "total_price": "89.97",
+      "currency": "DKK",
+      "created_at": "2026-05-14T10:30:00Z",
+      "updated_at": "2026-05-14T10:30:00Z"
+    },
+    "items": [
+      {
+        "id": 1,
+        "order_id": 1,
+        "event_id": 3,
+        "quantity": 2,
+        "price_at_purchase": "29.99",
+        "currency": "DKK"
+      },
+      {
+        "id": 2,
+        "order_id": 1,
+        "event_id": 7,
+        "quantity": 1,
+        "price_at_purchase": "29.99",
+        "currency": "DKK"
+      }
+    ],
+    "newCart": {
+      "id": 2,
+      "user_id": 5,
+      "session_id": null,
+      "is_active": true,
+      "created_at": "2026-05-14T10:30:00Z",
+      "updated_at": "2026-05-14T10:30:00Z"
+    }
+  }
+}
+```
+
+**Error responses:**
+
+- `400 Bad Request`: Cart is empty
+- `401 Unauthorized`: No valid bearer token provided
+- `404 Not Found`: User has no active cart
+
+### Retrieving orders (GET endpoints)
+
+**List all orders for authenticated user:**
+
+```http
+GET /api/orders
+Authorization: Bearer <jwt-token>
+```
+
+Returns a list of all orders placed by the authenticated user, sorted newest first.
+
+**Get a specific order:**
+
+```http
+GET /api/orders/:orderId
+Authorization: Bearer <jwt-token>
+```
+
+Returns the order header and all its items. Returns `403 Forbidden` if the order belongs to a different user.
+
+### Line item id strategy (cart lines and order lines)
+
+This section clarifies how line-level identifiers are handled across cart and order flows.
+
+#### What is implemented now
+
+- Cart line id = `cart_item.id`
+- This is correctly used as `itemId` in:
+  - `PUT /api/cart/items/:itemId`
+  - `DELETE /api/cart/items/:itemId`
+- Cart identity is resolved from:
+  - `Authorization: Bearer <token>` (authenticated user cart)
+  - `x-session-id` (guest cart)
+- Cart operations are consistent:
+  - `POST /api/cart/items`: creates a new line or increments quantity when the same `event_id` already exists in the active cart
+  - `PUT /api/cart/items/:itemId`: updates quantity by cart line id
+  - `DELETE /api/cart/items/:itemId`: removes a line only if it belongs to the caller's active cart
+- Price snapshot at cart stage is stored in `cart_item.price_at_addition`
+
+#### Order line strategy in current code
+
+`createOrderFromCart` exists in `src/models/orders.js`.
+
+It follows the snapshot pattern:
+
+- reads cart lines
+- creates order header
+- creates `order_item` lines with `price_at_purchase = price_at_addition`
+- deactivates the cart
+- runs all operations inside one database transaction
+
+This means the strategy is:
+
+- cart lines are mutable while shopping
+- order lines are immutable purchase snapshots after checkout
 
 ### API documentation style: `@swagger` comments vs `openapi.yaml`
 
@@ -317,6 +537,7 @@ Current usage in this project:
 
 - `POST /api/cart/items` validates `eventId` and `quantity`
 - `PUT /api/cart/items/{itemId}` validates both path params and body (`quantity`)
+- `DELETE /api/cart/items/{itemId}` validates path params (`itemId`)
 - `POST /api/auth/signup` validates `name`, `email`, and `password`
 - `POST /api/auth/login` validates `email` and `password`
 
@@ -547,3 +768,35 @@ To support login we needed a way to store passwords safely. We added a new migra
 - Passwords are **never stored as plain text**. Before saving, the plain password is hashed with `bcrypt` (cost factor 10). At login, `bcrypt.compare` is used to verify the attempt against the stored hash — the original password cannot be read back.
 - The column name is `password_hash` (not `password`) to make it obvious that the raw value is never stored.
 - A JWT (JSON Web Token) is issued on successful signup or login. The token is signed with `JWT_SECRET` and expires after 7 days. Clients include it as `Authorization: Bearer <token>` on protected requests.
+
+---
+
+### Step 7 — Implement checkout and order conversion
+
+A complete checkout transaction converts a shopper's active cart into an order, creates a fresh cart, and ensures all operations succeed or fail together as one atomic unit.
+
+**`createOrderFromCart` in `src/models/orders.js`** implements the checkout logic:
+
+- Loads all cart items (including price snapshot from `price_at_addition`)
+- Calculates order total from snapshotted prices (not live event prices)
+- Creates the `order` header row with total and currency
+- Creates `order_item` rows with `price_at_purchase = price_at_addition` (the historical snapshot)
+- Deactivates the old cart so it cannot be modified
+- Runs all operations **inside a single database transaction** for atomicity
+
+**`postCheckout` in `src/controllers/orders.js`** exposes this as an HTTP endpoint:
+
+- Validates user authentication (Bearer token required)
+- Calls `createOrderFromCart` to convert the active cart
+- Creates a new active cart for future shopping
+- Wraps both operations in a database transaction
+- Returns the order, order items, and new cart on success (HTTP 201)
+- Handles errors: empty cart (400), no active cart (404), unauthorized (401)
+
+**Key design decisions:**
+
+- **Inventory is unlimited** — no quantity checks or deductions occur
+- **Price snapshot** — order preserves the exact price when items were added to cart, even if event prices change later
+- **Transactional atomicity** — checkout is all-or-nothing; a crash during order creation rolls back all changes
+- **One active cart per user** — after checkout, the old cart is deactivated and a new one is created immediately
+- **Authenticated checkout only** — only logged-in users can place orders
