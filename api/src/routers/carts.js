@@ -1,5 +1,10 @@
 import express from "express";
-import { getCart, postCartItem, putCartItem } from "#controllers/carts.js";
+import {
+  deleteCartItemHandler,
+  getCart,
+  postCartItem,
+  putCartItem,
+} from "#controllers/carts.js";
 import { optionalAuth } from "#middlewares/auth.js";
 
 const cartsRouter = express.Router();
@@ -45,6 +50,21 @@ cartsRouter.get("/", getCart);
  *     summary: Add an event to the active cart
  *     tags:
  *       - Cart
+ *     parameters:
+ *       - in: header
+ *         name: Authorization
+ *         required: false
+ *         schema:
+ *           type: string
+ *           example: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+ *         description: Optional Bearer JWT for authenticated user carts
+ *       - in: header
+ *         name: x-session-id
+ *         required: false
+ *         schema:
+ *           type: string
+ *           example: guest-session-abc123
+ *         description: Guest cart identifier when not authenticated
  *     requestBody:
  *       required: true
  *       content:
@@ -91,6 +111,20 @@ cartsRouter.post("/items", postCartItem);
  *         schema:
  *           type: integer
  *         description: Cart line identifier (cart_item.id)
+ *       - in: header
+ *         name: Authorization
+ *         required: false
+ *         schema:
+ *           type: string
+ *           example: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+ *         description: Optional Bearer JWT for authenticated user carts
+ *       - in: header
+ *         name: x-session-id
+ *         required: false
+ *         schema:
+ *           type: string
+ *           example: guest-session-abc123
+ *         description: Guest cart identifier when not authenticated
  *     requestBody:
  *       required: true
  *       content:
@@ -115,5 +149,45 @@ cartsRouter.post("/items", postCartItem);
  *         description: Invalid token format or token expired
  */
 cartsRouter.put("/items/:itemId", putCartItem);
+
+/**
+ * @swagger
+ * /api/cart/items/{itemId}:
+ *   delete:
+ *     summary: Remove item from active cart
+ *     tags:
+ *       - Cart
+ *     parameters:
+ *       - in: path
+ *         name: itemId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Cart line identifier (cart_item.id)
+ *       - in: header
+ *         name: Authorization
+ *         required: false
+ *         schema:
+ *           type: string
+ *           example: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+ *         description: Optional Bearer JWT for authenticated user carts
+ *       - in: header
+ *         name: x-session-id
+ *         required: false
+ *         schema:
+ *           type: string
+ *           example: guest-session-abc123
+ *         description: Guest cart identifier when not authenticated
+ *     responses:
+ *       200:
+ *         description: Cart item removed
+ *       400:
+ *         description: Validation or identity error
+ *       404:
+ *         description: Cart item not found in active cart
+ *       401:
+ *         description: Invalid token format or token expired
+ */
+cartsRouter.delete("/items/:itemId", deleteCartItemHandler);
 
 export default cartsRouter;

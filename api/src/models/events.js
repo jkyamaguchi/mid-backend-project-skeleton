@@ -36,11 +36,11 @@ const ALLOWED_SORT_COLUMNS = new Set([
 /**
  * Returns a base query builder for the event table.
  *
- * @param {import("knex").Knex} [trx=db] - Optional transaction
+ * @param {import("knex").Knex} [transaction=db] - Optional transaction
  * @returns {import("knex").Knex.QueryBuilder}
  */
-function baseQuery(trx = db) {
-  return trx(TABLE);
+function baseQuery(transaction = db) {
+  return transaction(TABLE);
 }
 
 /**
@@ -51,13 +51,13 @@ function baseQuery(trx = db) {
  *
  * @param {Object} [filters={}]
  * @param {Object} [options={}]
- * @param {import("knex").Knex} [options.trx] - Optional transaction
+ * @param {import("knex").Knex} [options.transaction] - Optional transaction
  *
  * @returns {Promise<number>} Total matching rows
  */
 export async function countEvents(filters = {}, options = {}) {
-  const { trx } = options;
-  const qb = baseQuery(trx);
+  const { transaction } = options;
+  const qb = baseQuery(transaction);
 
   if (filters.search) {
     const term = `%${filters.search}%`;
@@ -92,12 +92,12 @@ export async function countEvents(filters = {}, options = {}) {
  * @param {number} [options.offset]
  * @param {string} [options.orderBy="id"]
  * @param {"asc"|"desc"} [options.order="asc"]
- * @param {import("knex").Knex} [options.trx]
+ * @param {import("knex").Knex} [options.transaction]
  *
  * @returns {Promise<Array<Object>>}
  */
 export async function listEvents(filters = {}, options = {}) {
-  const { limit, offset, trx } = options;
+  const { limit, offset, transaction } = options;
 
   // Validate sort column against allowlist to prevent SQL injection
   const orderBy = ALLOWED_SORT_COLUMNS.has(options.orderBy)
@@ -106,7 +106,7 @@ export async function listEvents(filters = {}, options = {}) {
   const order =
     String(options.order ?? "asc").toLowerCase() === "desc" ? "desc" : "asc";
 
-  const qb = baseQuery(trx).select("*");
+  const qb = baseQuery(transaction).select("*");
 
   if (filters.search) {
     const term = `%${filters.search}%`;
@@ -130,12 +130,12 @@ export async function listEvents(filters = {}, options = {}) {
  *
  * @param {number|string} id
  * @param {Object} [options={}]
- * @param {import("knex").Knex} [options.trx]
+ * @param {import("knex").Knex} [options.transaction]
  *
  * @returns {Promise<Object|null>}
  */
-export async function findEventById(id, { trx } = {}) {
-  const row = await baseQuery(trx).where({ id }).first();
+export async function findEventById(id, { transaction } = {}) {
+  const row = await baseQuery(transaction).where({ id }).first();
 
   return row ?? null;
 }

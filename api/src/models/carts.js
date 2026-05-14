@@ -6,11 +6,11 @@ import db from "#configs/database.js";
  * Find a cart row by id.
  *
  * @param {number} cartId
- * @param {{ trx?: import("knex").Knex }} [options]
+ * @param {{ transaction?: import("knex").Knex }} [options]
  * @returns {Promise<Object|null>}
  */
-export async function findCartById(cartId, { trx = db } = {}) {
-  const row = await trx("cart").where({ id: cartId }).first();
+export async function findCartById(cartId, { transaction = db } = {}) {
+  const row = await transaction("cart").where({ id: cartId }).first();
   return row ?? null;
 }
 
@@ -18,11 +18,11 @@ export async function findCartById(cartId, { trx = db } = {}) {
  * Find the active cart for an authenticated user.
  *
  * @param {number} userId
- * @param {{ trx?: import("knex").Knex }} [options]
+ * @param {{ transaction?: import("knex").Knex }} [options]
  * @returns {Promise<Object|null>}
  */
-export async function findActiveCartByUser(userId, { trx = db } = {}) {
-  const row = await trx("cart")
+export async function findActiveCartByUser(userId, { transaction = db } = {}) {
+  const row = await transaction("cart")
     .where({ user_id: userId, is_active: true })
     .first();
   return row ?? null;
@@ -32,11 +32,14 @@ export async function findActiveCartByUser(userId, { trx = db } = {}) {
  * Find an active guest cart by session id.
  *
  * @param {string} sessionId
- * @param {{ trx?: import("knex").Knex }} [options]
+ * @param {{ transaction?: import("knex").Knex }} [options]
  * @returns {Promise<Object|null>}
  */
-export async function findActiveCartBySession(sessionId, { trx = db } = {}) {
-  const row = await trx("cart")
+export async function findActiveCartBySession(
+  sessionId,
+  { transaction = db } = {},
+) {
+  const row = await transaction("cart")
     .where({ session_id: sessionId, is_active: true })
     .first();
   return row ?? null;
@@ -46,14 +49,14 @@ export async function findActiveCartBySession(sessionId, { trx = db } = {}) {
  * Create a new active cart.
  *
  * @param {{ userId?: number|null, sessionId?: string|null }} params
- * @param {{ trx?: import("knex").Knex }} [options]
+ * @param {{ transaction?: import("knex").Knex }} [options]
  * @returns {Promise<Object>}
  */
 export async function createCart(
   { userId = null, sessionId = null },
-  { trx = db } = {},
+  { transaction = db } = {},
 ) {
-  const [row] = await trx("cart")
+  const [row] = await transaction("cart")
     .insert({ user_id: userId, session_id: sessionId, is_active: true })
     .returning("*");
 
@@ -64,29 +67,29 @@ export async function createCart(
  * Find an active cart by owner identity, creating one when none exists.
  *
  * @param {{ userId?: number|null, sessionId?: string|null }} params
- * @param {{ trx?: import("knex").Knex }} [options]
+ * @param {{ transaction?: import("knex").Knex }} [options]
  * @returns {Promise<Object>}
  */
 export async function findOrCreateActiveCart(
   { userId = null, sessionId = null },
-  { trx = db } = {},
+  { transaction = db } = {},
 ) {
   if (userId) {
-    const existing = await findActiveCartByUser(userId, { trx });
+    const existing = await findActiveCartByUser(userId, { transaction });
     if (existing) return existing;
-    return createCart({ userId, sessionId: null }, { trx });
+    return createCart({ userId, sessionId: null }, { transaction });
   }
 
   if (sessionId) {
-    const existing = await findActiveCartBySession(sessionId, { trx });
+    const existing = await findActiveCartBySession(sessionId, { transaction });
     if (existing) return existing;
-    return createCart({ userId: null, sessionId }, { trx });
+    return createCart({ userId: null, sessionId }, { transaction });
   }
 
   throw new Error("Either userId or sessionId is required to resolve a cart");
 }
 
-// ─── Cart items ───────────────────────────────────────────────────────────────
+// Cart items
 
 /**
  * Get all items in a cart, joined with basic event info.
@@ -99,11 +102,11 @@ export async function findOrCreateActiveCart(
  *   ORDER BY ci.id ASC
  *
  * @param {number} cartId
- * @param {{ trx?: import("knex").Knex }} [options]
+ * @param {{ transaction?: import("knex").Knex }} [options]
  * @returns {Promise<Array<Object>>}
  */
-export async function listCartItems(cartId, { trx = db } = {}) {
-  return trx("cart_item as ci")
+export async function listCartItems(cartId, { transaction = db } = {}) {
+  return transaction("cart_item as ci")
     .join("event as e", "e.id", "ci.event_id")
     .where("ci.cart_id", cartId)
     .orderBy("ci.id", "asc")
@@ -123,11 +126,11 @@ export async function listCartItems(cartId, { trx = db } = {}) {
  * Find a cart line by its primary key id.
  *
  * @param {number} cartItemId
- * @param {{ trx?: import("knex").Knex }} [options]
+ * @param {{ transaction?: import("knex").Knex }} [options]
  * @returns {Promise<Object|null>}
  */
-export async function findCartItemById(cartItemId, { trx = db } = {}) {
-  const row = await trx("cart_item").where({ id: cartItemId }).first();
+export async function findCartItemById(cartItemId, { transaction = db } = {}) {
+  const row = await transaction("cart_item").where({ id: cartItemId }).first();
   return row ?? null;
 }
 
@@ -136,15 +139,15 @@ export async function findCartItemById(cartItemId, { trx = db } = {}) {
  *
  * @param {number} cartId
  * @param {number} eventId
- * @param {{ trx?: import("knex").Knex }} [options]
+ * @param {{ transaction?: import("knex").Knex }} [options]
  * @returns {Promise<Object|null>}
  */
 export async function findCartItemByCartAndEvent(
   cartId,
   eventId,
-  { trx = db } = {},
+  { transaction = db } = {},
 ) {
-  const row = await trx("cart_item")
+  const row = await transaction("cart_item")
     .where({ cart_id: cartId, event_id: eventId })
     .first();
   return row ?? null;
@@ -154,14 +157,14 @@ export async function findCartItemByCartAndEvent(
  * Insert a new cart line.
  *
  * @param {{ cartId: number, eventId: number, quantity: number, priceAtAddition: number|string, currency: string }} params
- * @param {{ trx?: import("knex").Knex }} [options]
+ * @param {{ transaction?: import("knex").Knex }} [options]
  * @returns {Promise<Object>}
  */
 export async function addCartItem(
   { cartId, eventId, quantity, priceAtAddition, currency },
-  { trx = db } = {},
+  { transaction = db } = {},
 ) {
-  const [row] = await trx("cart_item")
+  const [row] = await transaction("cart_item")
     .insert({
       cart_id: cartId,
       event_id: eventId,
@@ -179,20 +182,31 @@ export async function addCartItem(
  *
  * @param {number} cartItemId
  * @param {number} quantity
- * @param {{ trx?: import("knex").Knex }} [options]
+ * @param {{ transaction?: import("knex").Knex }} [options]
  * @returns {Promise<Object|null>}
  */
 export async function updateCartItemQuantity(
   cartItemId,
   quantity,
-  { trx = db } = {},
+  { transaction = db } = {},
 ) {
-  const [row] = await trx("cart_item")
+  const [row] = await transaction("cart_item")
     .where({ id: cartItemId })
     .update({ quantity })
     .returning("*");
 
   return row ?? null;
+}
+
+/**
+ * Delete a cart item by its id.
+ *
+ * @param {number} cartItemId
+ * @param {{ transaction?: import("knex").Knex }} [options]
+ * @returns {Promise<number>} Number of deleted rows
+ */
+export async function deleteCartItem(cartItemId, { transaction = db } = {}) {
+  return transaction("cart_item").where({ id: cartItemId }).delete();
 }
 
 /**
@@ -210,17 +224,17 @@ export async function updateCartItemQuantity(
  * Returns null when the cart is empty.
  *
  * @param {number} cartId
- * @param {{ trx?: import("knex").Knex }} [options]
+ * @param {{ transaction?: import("knex").Knex }} [options]
  * @returns {Promise<{ subtotal: number, currency: string, line_count: number, total_quantity: number }|null>}
  */
-export async function getCartSubtotal(cartId, { trx = db } = {}) {
-  const row = await trx("cart_item")
+export async function getCartSubtotal(cartId, { transaction = db } = {}) {
+  const row = await transaction("cart_item")
     .where({ cart_id: cartId })
     .select(
-      trx.raw("SUM(price_at_addition * quantity) AS subtotal"),
-      trx.raw("MIN(currency) AS currency"),
-      trx.raw("COUNT(*) AS line_count"),
-      trx.raw("SUM(quantity) AS total_quantity"),
+      transaction.raw("SUM(price_at_addition * quantity) AS subtotal"),
+      transaction.raw("MIN(currency) AS currency"),
+      transaction.raw("COUNT(*) AS line_count"),
+      transaction.raw("SUM(quantity) AS total_quantity"),
     )
     .first();
 
