@@ -3,6 +3,7 @@ import z from "zod";
 import { findEventById } from "#models/events.js";
 import {
   addCartItem,
+  deleteCartItem,
   findCartItemByCartAndEvent,
   findCartItemById,
   findOrCreateActiveCart,
@@ -64,9 +65,9 @@ function getCartIdentity(req) {
   return null;
 }
 
-async function buildCartResponse(cart, { trx = db } = {}) {
-  const items = await listCartItems(cart.id, { trx });
-  const subtotal = await getCartSubtotal(cart.id, { trx });
+async function buildCartResponse(cart, { transaction = db } = {}) {
+  const items = await listCartItems(cart.id, { transaction });
+  const subtotal = await getCartSubtotal(cart.id, { transaction });
 
   return {
     cart,
@@ -98,6 +99,7 @@ export async function getCart(req, res, next) {
     }
 
     const cart = await findOrCreateActiveCart(identity);
+
     const data = await buildCartResponse(cart);
 
     return res.json({ data });
@@ -137,10 +139,10 @@ export async function postCartItem(req, res, next) {
       });
     }
 
-    const result = await db.transaction(async (trx) => {
-      const cart = await findOrCreateActiveCart(identity, { trx });
+    const result = await db.transaction(async (transaction) => {
+      const cart = await findOrCreateActiveCart(identity, { transaction });
       const existingLine = await findCartItemByCartAndEvent(cart.id, eventId, {
-        trx,
+        transaction,
       });
 
       let statusCode = 201;
@@ -151,7 +153,7 @@ export async function postCartItem(req, res, next) {
           existingLine.id,
           existingLine.quantity + quantity,
           {
-            trx,
+            transaction,
           },
         );
         statusCode = 200;
@@ -164,11 +166,11 @@ export async function postCartItem(req, res, next) {
             priceAtAddition: event.price,
             currency: event.currency,
           },
-          { trx },
+          { transaction },
         );
       }
 
-      const data = await buildCartResponse(cart, { trx });
+      const data = await buildCartResponse(cart, { transaction });
 
       return {
         statusCode,
@@ -219,18 +221,19 @@ export async function putCartItem(req, res, next) {
     const { itemId } = paramsResult.data;
     const { quantity } = bodyResult.data;
 
-    const result = await db.transaction(async (trx) => {
-      const cart = await findOrCreateActiveCart(identity, { trx });
-      const line = await findCartItemById(itemId, { trx });
+    const result = await db.transaction(async (transaction) => {
+      const cart = await findOrCreateActiveCart(identity, { transaction });
+
+      const line = await findCartItemById(itemId, { transaction });
 
       if (!line || line.cart_id !== cart.id) {
         return null;
       }
 
       const updatedLine = await updateCartItemQuantity(itemId, quantity, {
-        trx,
+        transaction,
       });
-      const data = await buildCartResponse(cart, { trx });
+      const data = await buildCartResponse(cart, { transaction });
 
       return {
         updatedLine,
@@ -248,6 +251,66 @@ export async function putCartItem(req, res, next) {
       data: {
         ...result.data,
         line: result.updatedLine,
+      },
+    });
+  } catch (error) {
+    return next(error);
+  }
+}
+
+/**
+ * DELETE /api/cart/items/{itemId}
+ * itemId is the cart line id (cart_item.id).
+ */
+export async function deleteCartItemHandler(req, res, next) {
+  try {
+    const identity = getCartIdentity(req);
+
+    if (!identity) {
+      return res.status(400).json({
+        error: {
+          status: 400,
+          message:
+            "Cart identity required: provide a Bearer token or x-session-id header",
+        },
+      });
+    }
+
+    const paramsResult = cartItemPathSchema.safeParse(req.params ?? {});
+    if (!paramsResult.success) {
+      return sendValidationError(res, paramsResult.error);
+    }
+
+    const { itemId } = paramsResult.data;
+
+    const result = await db.transaction(async (transaction) => {
+      const cart = await findOrCreateActiveCart(identity, { transaction });
+
+      const line = await findCartItemById(itemId, { transaction });
+
+      if (!line || line.cart_id !== cart.id) {
+        return null;
+      }
+
+      await deleteCartItem(itemId, { transaction });
+      const data = await buildCartResponse(cart, { transaction });
+
+      return {
+        deletedLine: line,
+        data,
+      };
+    });
+
+    if (!result) {
+      return res.status(404).json({
+        error: { status: 404, message: "Cart item not found" },
+      });
+    }
+
+    return res.json({
+      data: {
+        ...result.data,
+        line: result.deletedLine,
       },
     });
   } catch (error) {
