@@ -3,6 +3,10 @@ import apiRouter from "#routers/api.js";
 
 const rootRouter = express.Router();
 
+rootRouter.get("/", (req, res) => {
+  res.redirect("/api/events");
+});
+
 rootRouter.use("/api", apiRouter);
 
 // 404 handler — scoped to /api so that /docs and other app routes can fall through
