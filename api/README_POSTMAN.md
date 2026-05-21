@@ -130,8 +130,6 @@ Body (empty - no payload required)
 ```
 
 
-```
-
 **What happens:**
 - ✅ Current cart marked as inactive
 - ✅ Order created with all cart items
