@@ -19,8 +19,9 @@ rootRouter.use("/api", (req, res) => {
 rootRouter.use((err, req, res, next) => {
   console.error(err);
   const status = typeof err.status === "number" ? err.status : 500;
+  const message = err.message?.trim() || "Internal server error";
   res.status(status).json({
-    error: { status, message: err.message ?? "Internal server error" },
+    error: { status, message },
   });
 });
 
