@@ -15,8 +15,7 @@ const swaggerOptions = {
       version: process.env.APP_VERSION ?? "0.0.1",
       description:
         "REST API for an events booking platform. " +
-        "The public catalog endpoints allow browsing events without authentication. " +
-        "Visit `/docs` for the interactive documentation.",
+        "The public catalog endpoints allow browsing events without authentication. "
     },
     tags: [
       {
