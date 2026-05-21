@@ -4,7 +4,7 @@ import apiRouter from "#routers/api.js";
 const rootRouter = express.Router();
 
 rootRouter.get("/", (req, res) => {
-  res.redirect("/api/events");
+  res.redirect("/docs");
 });
 
 rootRouter.use("/api", apiRouter);
