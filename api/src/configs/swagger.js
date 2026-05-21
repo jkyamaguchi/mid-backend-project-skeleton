@@ -18,12 +18,6 @@ const swaggerOptions = {
         "The public catalog endpoints allow browsing events without authentication. " +
         "Visit `/docs` for the interactive documentation.",
     },
-    servers: [
-      {
-        url: "/",
-        description: "Current host",
-      },
-    ],
     tags: [
       {
         name: "Events",
