@@ -24,7 +24,7 @@ The server starts at http://localhost:3001. → auto-redirects to `/docs`.
 
 Four route groups in Swagger: **Events**, **Auth**, **Cart**, and **Orders**.
 
-## Ctrl + C to shutdown server.
+Ctrl + C to shutdown server.
 
 ## 2. Final Project Structure
 
@@ -358,11 +358,8 @@ if (result.order.user_id !== userId) → 403 Forbidden
 | Implement `POST /api/events`       | Replace the `501` placeholder with real logic: validate the body with Zod, call `createEvent()` in the model, return the new event |
 | Implement `PATCH /api/events/:id`  | Allow updating an event's title, description, price, or currency; validate that only the owner can edit their own event            |
 | Implement `DELETE /api/events/:id` | Soft-delete or hard-delete an event; add a check that the event has no active cart items before allowing deletion                  |
-| Rate limiting on auth routes       | Add `express-rate-limit` to `POST /api/auth/signup` and `POST /api/auth/login` to prevent brute-force attacks                      |
 | Role-based access control          | Add a `role` column to `user` (`user` / `admin`); restrict event creation, update, and deletion to admin users only                |
-| Input sanitization                 | Strip HTML tags from free-text fields (`title`, `description`, `name`) before saving, to prevent stored XSS                        |
 | Order cancellation                 | Add `POST /api/orders/:orderId/cancel` that sets a `status` column on `order` to `cancelled` and restores event availability       |
-| Refresh tokens                     | Issue short-lived access tokens (15 min) and long-lived refresh tokens stored in the database; add `POST /api/auth/refresh`        |
 
 ---
 
