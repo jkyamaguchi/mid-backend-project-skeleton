@@ -80,6 +80,13 @@ const swaggerOptions = {
           },
         },
       },
+      securitySchemes: {
+        bearerAuth: {
+          type: "http",
+          scheme: "bearer",
+          bearerFormat: "JWT",
+        },
+      },
     },
   },
   apis: ["./src/routers/**/*.js", "./src/routers/*.js"],
