@@ -91,6 +91,13 @@ The code follows an MVC pattern — Model, View, Controller. There is no View la
 - **`requireAuth`** — verifies the `Authorization: Bearer <token>` header; returns `401` if missing or invalid
 - **`optionalAuth`** — allows guests through with no token; validates and attaches `req.user` if a token is present
 
+### MVC Architecture
+
+Request → Router → Controller → Model → Database
+                    ↓ Zod validation
+                    ↓ Business logic
+                    ← JSON response
+
 ---
 
 ## 3. Database Evolution
