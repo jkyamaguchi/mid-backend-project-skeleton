@@ -355,10 +355,9 @@ if (result.order.user_id !== userId) → 403 Forbidden
 
 **Key Takeaways**
 
-- MVC separates concerns cleanly — a database bug lives in the model, not scattered across the codebase
+- MVC separates concerns cleanly
 - JWT stateless auth — the server carries no session state; the token holds user identity
-- Database constraints (partial unique index, FK cascade rules) enforce business rules more reliably than application-layer checks alone
-- Knex transactions are essential for multi-step writes — checkout touches 4 tables atomically
+- Knex transactions are essential for multi-step writes — checkout touches 4 tables (`cart`, `cart_item`, `order`, `order_item`) atomically; if any step fails, the entire operation rolls back.
 
 **Future work**
 
