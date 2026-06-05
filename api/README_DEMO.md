@@ -93,10 +93,16 @@ The code follows an MVC pattern — Model, View, Controller. There is no View la
 
 ### MVC Architecture
 
-Request → Router → Controller → Model → Database
-                    ↓ Zod validation
-                    ↓ Business logic
-                    ← JSON response
+```mermaid
+flowchart LR
+    A[HTTP Request] --> B[Router\nmethod + path\nmiddleware]
+    B --> C[Controller\nZod validation\nbusiness logic]
+    C --> D[Model\nKnex query]
+    D --> E[(Database)]
+    E --> D
+    D --> C
+    C --> F[JSON Response]
+```
 
 ---
 
