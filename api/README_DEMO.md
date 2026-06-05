@@ -194,9 +194,9 @@ Database schema is managed with Knex migrations:
 
 ---
 
-## 4. Endpoints — Events & Auth
+## 4. Endpoints
 
-### Events — `/api/events`
+### Events
 
 | Method   | Route             | Auth required | Status         |
 | -------- | ----------------- | ------------- | -------------- |
@@ -234,7 +234,7 @@ Security note: `ALLOWED_SORT_COLUMNS` allowlist in the model prevents SQL inject
 
 ---
 
-### Auth — `/api/auth`
+### Auth
 
 | Method | Route              | Auth required | Description                                      |
 | ------ | ------------------ | ------------- | ------------------------------------------------ |
@@ -261,9 +261,7 @@ Security note: `ALLOWED_SORT_COLUMNS` allowlist in the model prevents SQL inject
 
 ---
 
-## 5. Endpoints — Cart & Orders
-
-### Cart — `/api/cart`
+### Cart
 
 All cart routes apply `optionalAuth` — guests and authenticated users are both supported.
 
