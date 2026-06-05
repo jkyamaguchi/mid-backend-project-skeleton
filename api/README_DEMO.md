@@ -190,9 +190,9 @@ erDiagram
 - `cart.session_id` is **nullable** — populated for unauthenticated carts to track the guest session; cleared when the cart is claimed by a user
 - `cart.is_active` enforces the **one active cart per authenticated user** rule (unique constraint on `user_id` where `is_active = true`)
 - `cart_item` uses a **simple single primary key** (`id PK`) — the project default
+- `cart_item.price_at_addition` protects the cart from being silently affected by future price changes
 - `order.user_id` is **required** (NOT NULL) — orders can only be placed by authenticated users
-- `price_at_addition` protects the cart from being silently affected by future price changes
-- `price_at_purchase` preserves historical accuracy: changing an event's price won't alter past orders
+- `order_item.price_at_purchase` preserves historical accuracy: changing an event's price won't alter past orders
 
 ### Migrations & Seeds
 
