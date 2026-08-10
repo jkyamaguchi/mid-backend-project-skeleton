@@ -1,6 +1,6 @@
 # The API package
 
-This package sets up a [Express](https://expressjs.com/) API server and a connection to a database (SQLite by default) using [Knex](https://knexjs.org/).
+This package sets up a [Express](https://expressjs.com/) API server and a connection to a PostgreSQL database by default using [Knex](https://knexjs.org/).
 
 For development you can run the command `npm run dev` which uses `nodemon` to watch files and restarts the server when a change happens. You can find the API at [http://localhost:3001/api](http://localhost:3001/api).
 

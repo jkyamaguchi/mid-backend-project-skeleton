@@ -15,15 +15,8 @@ const swaggerOptions = {
       version: process.env.APP_VERSION ?? "0.0.1",
       description:
         "REST API for an events booking platform. " +
-        "The public catalog endpoints allow browsing events without authentication. " +
-        "Visit `/docs` for the interactive documentation.",
+        "The public catalog endpoints allow browsing events without authentication. ",
     },
-    servers: [
-      {
-        url: `http://localhost:${process.env.PORT ?? 3000}`,
-        description: "Local development server",
-      },
-    ],
     tags: [
       {
         name: "Events",
@@ -87,6 +80,13 @@ const swaggerOptions = {
           },
         },
       },
+      securitySchemes: {
+        bearerAuth: {
+          type: "http",
+          scheme: "bearer",
+          bearerFormat: "JWT",
+        },
+      },
     },
   },
   apis: ["./src/routers/**/*.js", "./src/routers/*.js"],
@@ -107,6 +107,15 @@ const openApiEndpointSpecStub = {
 
 const swaggerSpec = swaggerJsdoc(swaggerOptions);
 const swaggerServe = swaggerUi.serve;
+const supportedHttpMethods = new Set([
+  "get",
+  "post",
+  "put",
+  "patch",
+  "delete",
+  "options",
+  "head",
+]);
 
 /**
  * Convert Express route params to OpenAPI path params.
@@ -145,12 +154,21 @@ const generateOpenApiSpecs = (app) => {
   const specs = {};
 
   for (const ep of listEndpoints(app)) {
+    // Skip non-API utility routes (e.g. /, /docs) from undocumented stubs.
+    if (!ep.path.startsWith("/api")) {
+      continue;
+    }
+
     const normalizedPath = expressPathToOpenApiPath(ep.path);
 
     specs[normalizedPath] ??= {};
 
     for (const method of ep.methods) {
       const m = method.toLowerCase();
+
+      if (!supportedHttpMethods.has(m)) {
+        continue;
+      }
 
       specs[normalizedPath][m] ??= {
         ...openApiEndpointSpecStub,

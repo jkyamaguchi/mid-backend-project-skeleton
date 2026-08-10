@@ -13,14 +13,8 @@ ordersRouter.use(requireAuth);
  *     summary: Get all orders for the authenticated user
  *     tags:
  *       - Orders
- *     parameters:
- *       - in: header
- *         name: Authorization
- *         required: true
- *         schema:
- *           type: string
- *           example: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
- *         description: Bearer JWT for authenticated user
+ *     security:
+ *       - bearerAuth: []
  *     responses:
  *       200:
  *         description: List of orders
@@ -36,14 +30,9 @@ ordersRouter.get("/", getOrders);
  *     summary: Get a single order by ID
  *     tags:
  *       - Orders
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
- *       - in: header
- *         name: Authorization
- *         required: true
- *         schema:
- *           type: string
- *           example: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
- *         description: Bearer JWT for authenticated user
  *       - in: path
  *         name: orderId
  *         required: true
@@ -71,14 +60,8 @@ ordersRouter.get("/:orderId", getOrderById);
  *     summary: Checkout the active cart and convert to order
  *     tags:
  *       - Orders
- *     parameters:
- *       - in: header
- *         name: Authorization
- *         required: true
- *         schema:
- *           type: string
- *           example: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
- *         description: Bearer JWT for authenticated user
+ *     security:
+ *       - bearerAuth: []
  *     responses:
  *       201:
  *         description: Order successfully created from cart

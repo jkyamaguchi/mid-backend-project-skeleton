@@ -3,6 +3,10 @@ import apiRouter from "#routers/api.js";
 
 const rootRouter = express.Router();
 
+rootRouter.get("/", (req, res) => {
+  res.redirect("/docs");
+});
+
 rootRouter.use("/api", apiRouter);
 
 // 404 handler — scoped to /api so that /docs and other app routes can fall through
@@ -15,8 +19,9 @@ rootRouter.use("/api", (req, res) => {
 rootRouter.use((err, req, res, next) => {
   console.error(err);
   const status = typeof err.status === "number" ? err.status : 500;
+  const message = err.message?.trim() || "Internal server error";
   res.status(status).json({
-    error: { status, message: err.message ?? "Internal server error" },
+    error: { status, message },
   });
 });
 

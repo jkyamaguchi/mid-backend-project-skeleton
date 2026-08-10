@@ -1,16 +1,16 @@
 import db from "#configs/database.js";
 import z from "zod";
 import { findEventById } from "#models/events.js";
+import { findOrCreateActiveCart } from "#models/carts.js";
 import {
   addCartItem,
   deleteCartItem,
   findCartItemByCartAndEvent,
   findCartItemById,
-  findOrCreateActiveCart,
   getCartSubtotal,
   listCartItems,
   updateCartItemQuantity,
-} from "#models/carts.js";
+} from "#models/cart_items.js";
 
 const cartItemCreateSchema = z.object({
   eventId: z.coerce

@@ -158,6 +158,8 @@ authRouter.post("/login", login);
  *     summary: Get current authenticated user
  *     tags:
  *       - Auth
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: header
  *         name: Authorization

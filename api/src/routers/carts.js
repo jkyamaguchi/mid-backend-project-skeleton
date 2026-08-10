@@ -18,14 +18,10 @@ cartsRouter.use(optionalAuth);
  *     summary: Get active cart
  *     tags:
  *       - Cart
+ *     security:
+ *       - bearerAuth: []
+ *       - {}
  *     parameters:
- *       - in: header
- *         name: Authorization
- *         required: false
- *         schema:
- *           type: string
- *           example: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
- *         description: Optional Bearer JWT for authenticated user carts
  *       - in: header
  *         name: x-session-id
  *         required: false
@@ -50,14 +46,10 @@ cartsRouter.get("/", getCart);
  *     summary: Add an event to the active cart
  *     tags:
  *       - Cart
+ *     security:
+ *       - bearerAuth: []
+ *       - {}
  *     parameters:
- *       - in: header
- *         name: Authorization
- *         required: false
- *         schema:
- *           type: string
- *           example: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
- *         description: Optional Bearer JWT for authenticated user carts
  *       - in: header
  *         name: x-session-id
  *         required: false
@@ -104,6 +96,9 @@ cartsRouter.post("/items", postCartItem);
  *     description: itemId is the cart line id (cart_item.id), not an event id.
  *     tags:
  *       - Cart
+ *     security:
+ *       - bearerAuth: []
+ *       - {}
  *     parameters:
  *       - in: path
  *         name: itemId
@@ -111,13 +106,6 @@ cartsRouter.post("/items", postCartItem);
  *         schema:
  *           type: integer
  *         description: Cart line identifier (cart_item.id)
- *       - in: header
- *         name: Authorization
- *         required: false
- *         schema:
- *           type: string
- *           example: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
- *         description: Optional Bearer JWT for authenticated user carts
  *       - in: header
  *         name: x-session-id
  *         required: false
@@ -157,6 +145,9 @@ cartsRouter.put("/items/:itemId", putCartItem);
  *     summary: Remove item from active cart
  *     tags:
  *       - Cart
+ *     security:
+ *       - bearerAuth: []
+ *       - {}
  *     parameters:
  *       - in: path
  *         name: itemId
@@ -164,13 +155,6 @@ cartsRouter.put("/items/:itemId", putCartItem);
  *         schema:
  *           type: integer
  *         description: Cart line identifier (cart_item.id)
- *       - in: header
- *         name: Authorization
- *         required: false
- *         schema:
- *           type: string
- *           example: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
- *         description: Optional Bearer JWT for authenticated user carts
  *       - in: header
  *         name: x-session-id
  *         required: false

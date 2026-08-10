@@ -1,4 +1,8 @@
 import db from "#configs/database.js";
+import {
+  createOrderItemsFromCartItems,
+  listOrderItemsByOrderId,
+} from "#models/order_items.js";
 
 /**
  * Find an order by id, including its items joined with event titles.
@@ -11,18 +15,7 @@ export async function findOrderById(orderId, { transaction = db } = {}) {
   const order = await transaction("order").where({ id: orderId }).first();
   if (!order) return null;
 
-  const items = await transaction("order_item as oi")
-    .join("event as e", "e.id", "oi.event_id")
-    .where("oi.order_id", orderId)
-    .orderBy("oi.id", "asc")
-    .select(
-      "oi.id",
-      "oi.event_id",
-      "e.title as event_title",
-      "oi.quantity",
-      "oi.price_at_purchase",
-      "oi.currency",
-    );
+  const items = await listOrderItemsByOrderId(orderId, { transaction });
 
   return { order, items };
 }
@@ -76,17 +69,13 @@ export async function createOrderFromCart(
       .returning("*");
 
     // 4. Insert order lines — price_at_purchase = price_at_addition (the snapshot)
-    const orderItems = cartItems.map((item) => ({
-      order_id: order.id,
-      event_id: item.event_id,
-      quantity: item.quantity,
-      price_at_purchase: item.price_at_addition, // snapshot
-      currency: item.currency,
-    }));
-
-    const insertedItems = await t("order_item")
-      .insert(orderItems)
-      .returning("*");
+    const insertedItems = await createOrderItemsFromCartItems(
+      order.id,
+      cartItems,
+      {
+        transaction: t,
+      },
+    );
 
     // 5. Deactivate the cart so it can no longer be modified
     await t("cart").where({ id: cartId }).update({ is_active: false });
